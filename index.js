@@ -37,15 +37,17 @@ app.use(express.json());
 const allowedOrigins = [
   "http://localhost:3001",
   "https://rental-mobil-ruby.vercel.app",
-  "https://rental-mobil-rcmr1udov-yoga-krisnas-projects.vercel.app"
+  "https://rental-mobil-rcmr1udov-yoga-krisnas-projects.vercel.app",
+  "https://uji-coba-production-7dc8.up.railway.app" // tambahkan ini jika request dari domain Railway
 ];
 
 app.use(cors({
   origin: function(origin, callback) {
-    // izinkan request tanpa origin (Postman, curl, dsb)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error("Not allowed by CORS"));
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
   },
   credentials: true
 }));
