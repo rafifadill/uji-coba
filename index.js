@@ -38,7 +38,8 @@ const allowedOrigins = [
   "http://localhost:3001",
   "https://rental-mobil-eta.vercel.app",
   "https://rental-mobil-git-main-yoga-krisna-utamas-projects.vercel.app",
-  "https://rental-mobil-mhnvsko6c-yoga-krisna-utamas-projects.vercel.app"
+  "https://rental-mobil-mhnvsko6c-yoga-krisna-utamas-projects.vercel.app",
+  "https://rental-mobil-rav1o3vwo-yoga-krisna-utamas-projects.vercel.app"
 ];
 
 app.use(cors({

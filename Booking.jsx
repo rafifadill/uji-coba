@@ -378,183 +378,386 @@ const Booking = () => {
               toast.error("Pembayaran gagal dan pesanan tidak tercatat.");
             }
           },
-          onClose: async function() {
-            const orderRes = await axios.post(
-              `${API_URL}/orders`,
-              {
-                layanan_id: Number(formData.layanan_id),
-                pickup_date: formData.pickup_date,
-                return_date: formData.return_date,
-                payment_method: "midtrans",
-                additional_notes: formData.additional_notes,
-                total_price: formData.total_price,
-                payment_status: "unpaid",
-                midtrans_order_id: order_id, // gunakan order_id yang sama
-              },
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            if (orderRes.data?.data?.id) {
-              navigate(`/orders/${orderRes.data.data.id}/receipt`);
-            } else {
-              toast.error("Pesanan gagal dibuat setelah menutup pembayaran.");
-            }
+          onClose: function() {
+            toast.info("Anda menutup popup pembayaran", {
+              position: "top-right",
+              autoClose: 3500,
+              theme: "colored",
+              icon: "ℹ️"
+            });
           }
         });
       } else {
-        toast.error("Gagal mendapatkan token pembayaran dari server");
+        toast.error("Gagal mendapatkan token pembayaran", {
+          position: "top-right",
+          autoClose: 3500,
+          theme: "colored",
+          icon: "❌"
+        });
       }
-    } catch (error) {
-      let errorMessage = "Gagal memproses pembayaran";
-      if (error.response) {
-        errorMessage =
-          error.response.data.message ||
-          error.response.data.error ||
-          errorMessage;
-      } else if (error.request) {
-        errorMessage = "Tidak ada respon dari server";
-      } else {
-        errorMessage = error.message;
-      }
-      toast.error(errorMessage, {
+    } catch (err) {
+      toast.error("Gagal memulai pembayaran", {
         position: "top-right",
         autoClose: 3500,
         theme: "colored",
         icon: "❌"
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  return (
-    <div className="booking-page" data-aos="fade-up">
-      <div className="container">
-        <div className="header-booking">
-          <h2>Pemesanan Mobil</h2>
-          <button className="btn-back" onClick={() => navigate(-1)}>
-            <FaArrowLeft /> Kembali
-          </button>
-        </div>
+  // Contoh logic di frontend (React)
+  function handleMidtransPayment(token, orderId) {
+    if (!window.snap) {
+      // Load Snap JS jika belum ada
+      const script = document.createElement("script");
+      script.src = "https://app.midtrans.com/snap/snap.js";
+      script.setAttribute("data-client-key", process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY);
+      script.onload = () => payWithSnap(token, orderId);
+      document.body.appendChild(script);
+    } else {
+      payWithSnap(token, orderId);
+    }
+  }
 
-        <div className="car-details">
-          <img src={image} alt={carName} className="car-image" />
-          <div className="car-info">
-            <h3>{carName}</h3>
-            <p className="car-price">
-              Harga: <strong>Rp {price.toLocaleString()}</strong> / hari
+  function payWithSnap(token, orderId) {
+    window.snap.pay(token, {
+      onSuccess: function(result) {
+        // Pembayaran berhasil
+        window.location.href = `/receipt/${orderId}`;
+      },
+      onPending: function(result) {
+        // Pembayaran pending, tetap arahkan ke receipt
+        window.location.href = `/receipt/${orderId}`;
+      },
+      onError: function(result) {
+        // Error pembayaran, arahkan ke receipt untuk info lebih lanjut
+        window.location.href = `/receipt/${orderId}`;
+      },
+      onClose: function() {
+        // User menutup popup tanpa bayar, tetap arahkan ke receipt
+        window.location.href = `/receipt/${orderId}`;
+      }
+    });
+  }
+
+  if (isSessionExpired) {
+    return null;
+  }
+
+  if (!carId) {
+    return (
+      <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
+        <div className="card shadow-sm" style={{ maxWidth: "500px" }}>
+          <div className="card-body text-center p-5">
+            <FaCar className="text-danger mb-4" style={{ fontSize: "4rem" }} />
+            <h2 className="fw-bold mb-3">Mobil Tidak Ditemukan</h2>
+            <p className="lead mb-4">
+              Silakan kembali ke halaman pencarian mobil untuk memilih kendaraan
             </p>
-            {discount > 0 && (
-              <p className="car-discount">
-                Diskon: <strong>{discount}%</strong>
-              </p>
-            )}
+            <button
+              onClick={() => navigate("/layanan")}
+              className="btn btn-primary px-4 py-2"
+            >
+              Kembali ke Daftar Mobil
+            </button>
           </div>
         </div>
+      </div>
+    );
+  }
 
-        <div className="booking-form">
-          <h3>Form Pemesanan</h3>
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="pickup_date">Tanggal Ambil</label>
-              <input
-                type="date"
-                id="pickup_date"
-                name="pickup_date"
-                value={formData.pickup_date}
-                onChange={handleChange}
-                className={errors.pickup_date ? "error" : ""}
-                required
-              />
-              {errors.pickup_date && (
-                <span className="error-message">{errors.pickup_date}</span>
-              )}
+  return (
+    <div className="booking-page-root" style={{ paddingTop: 100 }}>
+      {/* CONTENT SECTION */}
+      <div className="container">
+        <div className="row justify-content-center">
+          <div className="col-lg-10">
+            <div className="booking-page-card border-0 shadow-sm" data-aos="fade-up">
+              <div className="booking-page-card-header bg-primary text-white py-3 d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center gap-3">
+                  <button className="btn btn-sm btn-outline-light me-3" onClick={() => navigate(-1)}>
+                    <FaArrowLeft />
+                  </button>
+                  <h1 className="h4 mb-0 fw-bold">
+                    <FaCar className="me-2" /> 
+                    {activeTab === "booking" ? "Formulir Pemesanan" : "Pembayaran"}
+                  </h1>
+                </div>
+                <span className="badge bg-gradient-primary fs-6 px-3 py-2 shadow-sm" style={{ background: "linear-gradient(90deg,#ffd700,#ffb300)", color: "#222" }}>
+                  Premium Service
+                </span>
+              </div>
+              <div className="booking-page-card-body p-4">
+                <div className="row g-4">
+                  {/* Summary Section */}
+                  <div className="col-lg-5">
+                    <div className="booking-page-summary card border-0 shadow-sm p-0" data-aos="zoom-in">
+                      <div className="booking-page-card-img-top-custom position-relative">
+                        <img
+                          src={image ? (image.startsWith("http") ? image : API_URL.replace(/\/api$/, "") + image) : "/images/default-car.jpg"}
+                          alt={carName}
+                          className="booking-page-img-cover-custom"
+                        />
+                        {discount > 0 && (
+                          <span className="badge bg-warning text-dark position-absolute top-0 end-0 m-3 fs-6 shadow">Diskon {discount}%</span>
+                        )}
+                      </div>
+                      <div className="card-body pb-3">
+                        <h3 className="h5 fw-bold mb-3 text-gradient">{carName}</h3>
+                        <ul className="list-unstyled mb-4">
+                          <li className="mb-2 d-flex align-items-center">
+                            <FaMoneyBillWave className="text-primary me-2 flex-shrink-0" />
+                            <span>
+                              Harga per hari: {discount > 0 ? (
+                                <>
+                                  <span style={{ textDecoration: "line-through", color: "#bbb", marginRight: 6 }}>
+                                    Rp {price?.toLocaleString("id-ID")}
+                                  </span>
+                                  <span className="fw-bold text-warning">
+                                    Rp {hargaPromo?.toLocaleString("id-ID")}
+                                  </span>
+                                </>
+                              ) : (
+                                <strong>Rp {price?.toLocaleString("id-ID")}</strong>
+                              )}
+                            </span>
+                          </li>
+                          <li className="mb-2 d-flex align-items-center">
+                            <FaCalendarAlt className="text-primary me-2 flex-shrink-0" />
+                            <span>Durasi sewa: <strong>{days} hari</strong></span>
+                          </li>
+                        </ul>
+                        <div className="border-top pt-3">
+                          <div className="d-flex justify-content-between align-items-center">
+                            <h4 className="h6 mb-0">Total Harga:</h4>
+                            <h3 className="h5 mb-0 total-price-badge">
+                              Rp {totalHarga?.toLocaleString("id-ID")}
+                            </h3>
+                          </div>
+                          <small className="text-muted d-block mt-1">Termasuk pajak dan asuransi</small>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Form Section */}
+                  <div className="col-lg-7">
+                    {/* Info Ketersediaan */}
+                    <div className="mb-4">
+                      <div className="card border-0 shadow-sm">
+                        <div className="card-body">
+                          <h5 className="fw-bold mb-3">
+                            <i className="fas fa-calendar-times text-warning me-2"></i>
+                            Informasi Ketersediaan Mobil
+                          </h5>
+                          {bookedDates.length === 0 ? (
+                            <div className="alert alert-success mb-0 d-flex align-items-center">
+                              <i className="fas fa-check-circle me-2"></i>
+                              Mobil tersedia untuk semua tanggal.
+                            </div>
+                          ) : (
+                            <div className="alert alert-warning mb-0">
+                              <div className="mb-2">
+                                <i className="fas fa-exclamation-triangle me-2"></i>
+                                <b>Mobil tidak tersedia pada tanggal berikut:</b>
+                              </div>
+                              <ul className="list-group list-group-flush">
+                                {bookedDates.map((range, i) => (
+                                  <li key={i} className="list-group-item bg-transparent px-0 py-1 border-0">
+                                    <span className="badge bg-danger bg-opacity-75 me-2">
+                                      {new Date(range.start).toLocaleDateString("id-ID")} - {new Date(range.end).toLocaleDateString("id-ID")}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="card h-100 border-0 shadow-sm" data-aos="fade-left">
+                      <div className="card-body">
+                        <div className="booking-step-indicator mb-4">
+                          <div className={`step ${activeTab === "booking" ? "active" : ""}`}>
+                            <span className="step-number">1</span>
+                            <span className="step-label">Pemesanan</span>
+                          </div>
+                          <div className="step-divider" />
+                          <div className={`step ${activeTab === "payment" ? "active" : ""}`}>
+                            <span className="step-number">2</span>
+                            <span className="step-label">Pembayaran</span>
+                          </div>
+                        </div>
+                        <ul className="nav nav-tabs mb-4">
+                          <li className="nav-item">
+                            <button
+                              className={`nav-link ${activeTab === "booking" ? "active" : ""}`}
+                              onClick={() => setActiveTab("booking")}
+                            >
+                              <FaCalendarAlt className="me-2" />
+                              Detail Pemesanan
+                            </button>
+                          </li>
+                          <li className="nav-item">
+                            <button
+                              className={`nav-link ${activeTab === "payment" ? "active" : ""}`}
+                              onClick={() => setActiveTab("payment")}
+                              disabled={!formData.pickup_date || !formData.return_date}
+                            >
+                              <FaCreditCard className="me-2" />
+                              Pembayaran
+                            </button>
+                          </li>
+                        </ul>
+
+                        <form onSubmit={handleSubmit} noValidate>
+                          {activeTab === "booking" ? (
+                            <>
+                              <div className="mb-3">
+                                <label htmlFor="pickup_date" className="form-label fw-bold">
+                                  <FaCalendarAlt className="me-2 text-muted" />
+                                  Tanggal Pengambilan
+                                </label>
+                                <input
+                                  type="date"
+                                  id="pickup_date"
+                                  name="pickup_date"
+                                  className={`form-control ${errors.pickup_date ? "is-invalid" : ""}`}
+                                  value={formData.pickup_date}
+                                  onChange={handleChange}
+                                  min={format(new Date(), "yyyy-MM-dd")}
+                                  required
+                                />
+                                {errors.pickup_date && (
+                                  <div className="invalid-feedback">{errors.pickup_date}</div>
+                                )}
+                              </div>
+
+                              <div className="mb-4">
+                                <label htmlFor="return_date" className="form-label fw-bold">
+                                  <FaCalendarAlt className="me-2 text-muted" />
+                                  Tanggal Pengembalian
+                                </label>
+                                <input
+                                  type="date"
+                                  id="return_date"
+                                  name="return_date"
+                                  className="form-control"
+                                  value={formData.return_date}
+                                  readOnly
+                                  required
+                                />
+                                <small className="text-muted">
+                                  Diisi otomatis berdasarkan durasi sewa
+                                </small>
+                              </div>
+
+                              <button
+                                type="button"
+                                className="btn btn-primary w-100 py-3"
+                                onClick={() => setActiveTab("payment")}
+                                disabled={
+                                  !formData.pickup_date ||
+                                  !formData.return_date ||
+                                  isChecking ||
+                                  isAvailable === false // <-- tombol disabled jika mobil tidak tersedia
+                                }
+                              >
+                                {isChecking ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-2" />
+                                    Mengecek ketersediaan...
+                                  </>
+                                ) : isAvailable === false ? (
+                                  "Mobil Tidak Tersedia"
+                                ) : (
+                                  "Lanjut ke Pembayaran"
+                                )}
+                              </button>
+                              {isAvailable === false && (
+                                <div className="alert alert-danger mt-3">
+                                  <i className="fas fa-exclamation-circle me-2"></i>
+                                  Mobil tidak tersedia pada tanggal yang dipilih. Silakan pilih tanggal lain.
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <div className="mb-4">
+                                <label className="form-label fw-bold d-block mb-3">
+                                  Metode Pembayaran
+                                </label>
+                                <div className="alert alert-info d-flex align-items-center gap-2 mb-4">
+                                  <FaCreditCard className="me-2" />
+                                  Pembayaran hanya dapat dilakukan melalui Midtrans (Virtual Account).
+                                </div>
+                                {/* Tambahkan alert jika mobil tidak tersedia */}
+                                {isAvailable === false && (
+                                  <div className="alert alert-danger d-flex align-items-center gap-2 mb-4">
+                                    <FaTimesCircle className="me-2" />
+                                    Mobil tidak tersedia pada tanggal yang dipilih. Silahkan pilih mobil yang lain.
+                                  </div>
+                                )}
+                              </div>
+                              <div className="mb-4">
+                                <label htmlFor="additional_notes" className="form-label fw-bold">
+                                  Catatan Tambahan
+                                </label>
+                                <textarea
+                                  id="additional_notes"
+                                  name="additional_notes"
+                                  className="form-control"
+                                  rows="3"
+                                  value={formData.additional_notes}
+                                  onChange={handleChange}
+                                  placeholder="Contoh: Alamat pengambilan, permintaan khusus, dll."
+                                ></textarea>
+                              </div>
+                              <div className="d-flex gap-3">
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-secondary flex-grow-1 py-3"
+                                  onClick={() => setActiveTab("booking")}
+                                >
+                                  Kembali
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-success flex-grow-1 py-3"
+                                  onClick={handleMidtransPayment}
+                                  disabled={isLoading || isAvailable === false}
+                                >
+                                  <FaCreditCard className="me-2" />
+                                  Bayar Sekarang
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                  {/* ...end col-lg-7 */}
+                </div>
+              </div>
             </div>
-
-            <div className="form-group">
-              <label htmlFor="return_date">Tanggal Kembali</label>
-              <input
-                type="date"
-                id="return_date"
-                name="return_date"
-                value={formData.return_date}
-                onChange={handleChange}
-                className={errors.return_date ? "error" : ""}
-                required
-              />
-              {errors.return_date && (
-                <span className="error-message">{errors.return_date}</span>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="payment_method">Metode Pembayaran</label>
-              <select
-                id="payment_method"
-                name="payment_method"
-                value={formData.payment_method}
-                onChange={handleChange}
-                className={errors.payment_method ? "error" : ""}
-                required
-              >
-                <option value="midtrans">Midtrans</option>
-                <option value="bank_transfer">Transfer Bank</option>
-                <option value="cash">Tunai</option>
-              </select>
-              {errors.payment_method && (
-                <span className="error-message">{errors.payment_method}</span>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="additional_notes">Catatan Tambahan</label>
-              <textarea
-                id="additional_notes"
-                name="additional_notes"
-                value={formData.additional_notes}
-                onChange={handleChange}
-                rows="3"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Total Harga</label>
-              <p className="total-price">
-                Rp {formData.total_price.toLocaleString()}
-              </p>
-            </div>
-
-            <div className="form-actions">
-              <button
-                type="submit"
-                className="btn-primary"
-                disabled={isLoading}
-              >
-                {isLoading ? "Memproses..." : "Pesan Sekarang"}
-              </button>
-            </div>
-          </form>
-        </div>
-
-        <div className="terms-and-conditions">
-          <h3>Syarat dan Ketentuan</h3>
-          <ul>
-            <li>Mobil harus dikembalikan dalam kondisi baik.</li>
-            <li>Isi bahan bakar akan diperiksa saat pengembalian.</li>
-            <li>Late return akan dikenakan biaya tambahan.</li>
-          </ul>
+          </div>
         </div>
       </div>
     </div>
   );
 };
-
 Booking.propTypes = {
-  carId: PropTypes.string,
-  carName: PropTypes.string,
-  price: PropTypes.number,
-  discount: PropTypes.number,
-  image: PropTypes.string,
-  days: PropTypes.number,
+  location: PropTypes.shape({
+    state: PropTypes.shape({
+      carId: PropTypes.string.isRequired,
+      carName: PropTypes.string.isRequired,
+      price: PropTypes.number.isRequired,
+      days: PropTypes.number,
+      totalPrice: PropTypes.number,
+      image: PropTypes.string,
+      discount: PropTypes.number,
+    }),
+  }),
 };
 
 export default Booking;

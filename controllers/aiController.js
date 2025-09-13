@@ -1,3 +1,5 @@
+const API_URL = process.env.API_URL || "https://uji-coba-production-7dc8.up.railway.app/api";
+
 exports.chat = async (req, res) => {
   console.log('AI_CHAT headers:', {
     auth: req.headers.authorization ? 'present' : 'missing',
