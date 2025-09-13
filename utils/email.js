@@ -6,6 +6,8 @@ const transporter = nodemailer.createTransport({
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_PASS,
   },
+  secure: true, // gunakan SSL
+  port: 465
 });
 
 exports.sendMail = async ({ to, subject, html }) => {
