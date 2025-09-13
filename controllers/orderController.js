@@ -138,7 +138,6 @@ async function getCarWithRating(car) {
 
 exports.createOrder = async (req, res) => {
   const transaction = await sequelize.transaction();
-  let car;
   try {
     // Ambil dari req.body
     const {
@@ -214,7 +213,9 @@ exports.createOrder = async (req, res) => {
     await transaction.commit();
     res.status(201).json({ success: true, data: order });
   } catch (error) {
-    await transaction.rollback();
+    if (!transaction.finished) {
+      await transaction.rollback();
+    }
     res.status(500).json({ success: false, message: error.message });
   }
 };
