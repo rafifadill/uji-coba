@@ -150,72 +150,25 @@ exports.createOrder = async (req, res) => {
       payment_status,
       midtrans_order_id
     } = req.body;
+    const user_id = req.user.id;
 
-    // Validasi input
-    if (!layanan_id || !pickup_date || !return_date) {
-      if (transaction && transaction.finished !== "commit" && transaction.finished !== "rollback") {
-        await transaction.rollback();
-      }
-      return res.status(400).json({
-        success: false,
-        message: "Data yang diperlukan tidak lengkap"
-      });
-    }
-
-    const pickupDate = new Date(pickup_date);
-    const returnDate = new Date(return_date);
-
-    // Cek ketersediaan mobil
-    const isAvailable = await cekKetersediaanMobil(layanan_id, pickupDate, returnDate, transaction);
-    if (!isAvailable) {
-      if (transaction && transaction.finished !== "commit" && transaction.finished !== "rollback") {
-        await transaction.rollback();
-      }
-      return res.status(400).json({
-        success: false,
-        message: "Mobil tidak tersedia untuk tanggal yang dipilih"
-      });
-    }
-
-    // Buat pesanan
-    const newOrder = await Order.create({
-      user_id: req.user.id,
+    // Buat order baru
+    const order = await Order.create({
+      user_id,
       layanan_id,
-      order_date: new Date(),
       pickup_date,
       return_date,
+      payment_method,
+      additional_notes,
       total_price,
-      payment_method: payment_method || "midtrans",
-      payment_status: payment_status || "unpaid",
-      midtrans_order_id: midtrans_order_id || null,
-      additional_notes: additional_notes || null,
-      status: payment_status === "paid" ? "confirmed" : payment_status === "failed" ? "cancelled" : "pending"
+      payment_status: payment_status || 'unpaid',
+      midtrans_order_id
     }, { transaction });
-
-    // Ambil data mobil
-    car = await Layanan.findByPk(layanan_id);
-
-    // Simpan notifikasi ke database
-    await Notification.create({
-      user_id: null,
-      message: `Pesanan baru dari ${req.user.name} untuk ${car?.nama || 'mobil'}.`,
-      type: 'order'
-    });
-    // Emit ke admin (atau broadcast)
-    req.app.get('io').emit('new_order', {
-      title: 'Pesanan Baru',
-      message: `Pesanan baru dari ${req.user.name} untuk ${car?.nama || 'mobil'}.`,
-      type: 'order',
-      createdAt: new Date().toISOString(),
-      read: false
-    });
 
     await transaction.commit();
     res.status(201).json({ success: true, data: order });
   } catch (error) {
-    if (!transaction.finished) {
-      await transaction.rollback();
-    }
+    if (!transaction.finished) await transaction.rollback();
     res.status(500).json({ success: false, message: error.message });
   }
 };
