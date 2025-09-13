@@ -38,7 +38,9 @@ const allowedOrigins = [
   "http://localhost:3001",
   "https://rental-mobil-ruby.vercel.app",
   "https://rental-mobil-rcmr1udov-yoga-krisnas-projects.vercel.app",
-  "https://uji-coba-production-7dc8.up.railway.app" // tambahkan ini jika request dari domain Railway
+  "https://uji-coba-production-7dc8.up.railway.app",
+  "https://rental-mobil-eta.vercel.app",
+  "https://rental-mobil.vercel.app"
 ];
 
 app.use(cors({
