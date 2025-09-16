@@ -699,10 +699,18 @@ exports.updateOrderStatus = async (req, res) => {
 exports.deleteOrder = async (req, res) => {
   try {
     const { id } = req.params;
-    const order = await Order.findByPk(id);
+    let where = { id };
+
+    // Jika bukan admin, hanya bisa hapus pesanan miliknya sendiri
+    if (req.user.role !== "admin") {
+      where.user_id = req.user.id;
+    }
+
+    const order = await Order.findOne({ where });
     if (!order) {
       return res.status(404).json({ success: false, message: "Pesanan tidak ditemukan" });
     }
+
     await order.destroy();
     res.json({ success: true, message: "Pesanan berhasil dihapus" });
   } catch (error) {

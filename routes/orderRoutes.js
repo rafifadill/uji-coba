@@ -157,7 +157,7 @@ router.get(
 router.delete(
   '/:id',
   authMiddleware,
-  checkAdmin,
+  checkAdmin, // hanya admin bisa hapus pesanan
   orderController.deleteOrder
 );
 
