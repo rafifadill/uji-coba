@@ -678,62 +678,21 @@ exports.updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    const order = await Order.findByPk(id, {
-      include: [
-        { model: User, as: 'user', attributes: ['name', 'email'] },
-        { model: Layanan, as: 'layanan', attributes: ['nama'] }
-      ]
-    });
-    if (!order) {
-      return res.status(404).json({ success: false, message: "Pesanan tidak ditemukan" });
+    const order = await Order.findByPk(id);
+    if (!order) return res.status(404).json({ success: false, message: "Order tidak ditemukan" });
+
+    // Validasi status
+    const allowedStatus = ['pending', 'confirmed', 'completed', 'cancelled', 'rejected'];
+    if (!allowedStatus.includes(status)) {
+      return res.status(400).json({ success: false, message: "Status tidak valid" });
     }
+
     order.status = status;
     await order.save();
 
-    // Kirim email notifikasi ke user
-    if (order.user && order.user.email) {
-      let statusLabel = "";
-      switch (status) {
-        case "pending": statusLabel = "Menunggu"; break;
-        case "confirmed": statusLabel = "Dikonfirmasi"; break;
-        case "completed": statusLabel = "Selesai"; break;
-        case "cancelled": statusLabel = "Dibatalkan"; break;
-        case "rejected": statusLabel = "Ditolak"; break;
-        default: statusLabel = status;
-      }
-      await sendMail({
-        to: order.user.email,
-        subject: `Status Pesanan #${order.id} Diubah Menjadi ${statusLabel}`,
-        html: `
-          <div style="font-family: Arial,sans-serif;max-width:600px;margin:0 auto;">
-            <h2>Status Pesanan Anda Telah Diubah</h2>
-            <p>Halo <b>${order.user.name}</b>,</p>
-            <p>Status pesanan Anda untuk mobil <b>${order.layanan?.nama || "-"}</b> telah diubah menjadi <b>${statusLabel}</b>.</p>
-            <p>ID Pesanan: <b>#${order.id}</b></p>
-            <p>Terima kasih telah menggunakan layanan kami.</p>
-          </div>
-        `
-      });
-    }
-    if (order.user && order.user.no_telp) {
-      await sendWhatsappFonnte(
-        order.user.no_telp,
-        `Status pesanan #${order.id} Anda telah diubah menjadi ${status}.`
-      );
-    }
-
-    // Kirim notifikasi ke admin via socket.io
-    req.app.get('io').emit('new_order', {
-      title: 'Status Pesanan Diperbarui',
-      message: `Status pesanan #${order.id} (${order.layanan?.nama || '-'}) diubah menjadi ${status}.`,
-      type: 'order',
-      createdAt: new Date().toISOString(),
-      read: false
-    });
-
-    res.json({ success: true, message: "Status pesanan berhasil diupdate", data: order });
+    res.json({ success: true, message: "Status pesanan berhasil diubah", data: order });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Gagal update status pesanan" });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
